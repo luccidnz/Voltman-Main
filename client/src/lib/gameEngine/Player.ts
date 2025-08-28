@@ -8,9 +8,11 @@ export class Player {
   public targetY: number;
   public direction: Direction | null = null;
   public nextDirection: Direction | null = null;
-  private moveSpeed = DEFAULT_CONFIG.moveSpeed;
+  private moveSpeed = 0.12; // Increased speed for smoother movement
   private startX: number;
   private startY: number;
+  private isMoving: boolean = false;
+  private animationFrame: number = 0;
 
   constructor(x: number, y: number) {
     this.x = x;
@@ -38,49 +40,55 @@ export class Player {
   }
 
   public update(deltaTime: number, maze: Maze): void {
-    // Move towards target
-    if (this.direction) {
+    this.animationFrame += deltaTime * 0.01;
+    
+    // Handle pending direction change first
+    if (this.nextDirection && this.canChangeDirection(maze)) {
+      const vector = DIRECTION_VECTORS[this.nextDirection];
+      const newX = Math.round(this.x) + vector.x;
+      const newY = Math.round(this.y) + vector.y;
+
+      if (maze.isPath(newX, newY)) {
+        this.direction = this.nextDirection;
+        this.targetX = newX;
+        this.targetY = newY;
+        this.nextDirection = null;
+        this.isMoving = true;
+      }
+    }
+
+    // Move towards target with smooth interpolation
+    if (this.direction && this.isMoving) {
       const dx = this.targetX - this.x;
       const dy = this.targetY - this.y;
       const distance = Math.sqrt(dx * dx + dy * dy);
 
-      if (distance < 0.1) {
-        // Reached target
+      if (distance < 0.05) {
+        // Snap to target when very close
         this.x = this.targetX;
         this.y = this.targetY;
+        this.isMoving = false;
 
         // Try to continue in current direction
-        if (this.direction) {
-          const vector = DIRECTION_VECTORS[this.direction];
-          const newX = this.x + vector.x;
-          const newY = this.y + vector.y;
+        const vector = DIRECTION_VECTORS[this.direction];
+        const newX = this.x + vector.x;
+        const newY = this.y + vector.y;
 
-          if (maze.isPath(newX, newY)) {
-            this.targetX = newX;
-            this.targetY = newY;
-          } else {
-            this.direction = null;
-          }
-        }
-
-        // Try pending direction change
-        if (this.nextDirection && (!this.direction || this.nextDirection !== this.direction)) {
-          const vector = DIRECTION_VECTORS[this.nextDirection];
-          const newX = this.x + vector.x;
-          const newY = this.y + vector.y;
-
-          if (maze.isPath(newX, newY)) {
-            this.direction = this.nextDirection;
-            this.targetX = newX;
-            this.targetY = newY;
-            this.nextDirection = null;
-          }
+        if (maze.isPath(newX, newY)) {
+          this.targetX = newX;
+          this.targetY = newY;
+          this.isMoving = true;
+        } else {
+          this.direction = null;
         }
       } else {
-        // Move towards target
+        // Smooth movement with easing
         const moveDistance = this.moveSpeed * deltaTime;
-        this.x += (dx / distance) * moveDistance;
-        this.y += (dy / distance) * moveDistance;
+        const normalizedDx = dx / distance;
+        const normalizedDy = dy / distance;
+        
+        this.x += normalizedDx * moveDistance;
+        this.y += normalizedDy * moveDistance;
       }
     }
 
@@ -92,6 +100,16 @@ export class Player {
       this.x = 0;
       this.targetX = 0;
     }
+  }
+
+  private canChangeDirection(maze: Maze): boolean {
+    // Allow direction change when close to grid position
+    const gridX = Math.round(this.x);
+    const gridY = Math.round(this.y);
+    const distanceToGrid = Math.sqrt(
+      Math.pow(this.x - gridX, 2) + Math.pow(this.y - gridY, 2)
+    );
+    return distanceToGrid < 0.3;
   }
 
   public reset(x?: number, y?: number): void {

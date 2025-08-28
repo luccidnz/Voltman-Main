@@ -8,15 +8,28 @@ interface MobileControlsProps {
 const MobileControls = ({ onDirectionPress, onDirectionRelease }: MobileControlsProps) => {
   const activeKeys = useRef(new Set<string>());
 
-  const handleTouchStart = (direction: string) => {
+  const handleTouchStart = (direction: string, event?: Event) => {
+    if (event) {
+      event.preventDefault();
+      event.stopPropagation();
+    }
     const keyCode = getKeyCodeForDirection(direction);
     if (!activeKeys.current.has(keyCode)) {
       activeKeys.current.add(keyCode);
       onDirectionPress(keyCode);
+      
+      // Haptic feedback for Android devices
+      if (navigator.vibrate) {
+        navigator.vibrate(50);
+      }
     }
   };
 
-  const handleTouchEnd = (direction: string) => {
+  const handleTouchEnd = (direction: string, event?: Event) => {
+    if (event) {
+      event.preventDefault();
+      event.stopPropagation();
+    }
     const keyCode = getKeyCodeForDirection(direction);
     if (activeKeys.current.has(keyCode)) {
       activeKeys.current.delete(keyCode);
@@ -59,13 +72,13 @@ const MobileControls = ({ onDirectionPress, onDirectionRelease }: MobileControls
             {/* Top row */}
             <div></div>
             <button
-              onTouchStart={() => handleTouchStart('up')}
-              onTouchEnd={() => handleTouchEnd('up')}
+              onTouchStart={(e) => handleTouchStart('up', e.nativeEvent)}
+              onTouchEnd={(e) => handleTouchEnd('up', e.nativeEvent)}
               onMouseDown={() => handleTouchStart('up')}
               onMouseUp={() => handleTouchEnd('up')}
               onMouseLeave={() => handleTouchEnd('up')}
-              className="w-10 h-10 text-white font-bold text-xl flex items-center justify-center active:scale-95 transition-transform"
-              style={buttonStyle}
+              className="w-12 h-12 text-white font-bold text-xl flex items-center justify-center active:scale-95 transition-transform select-none"
+              style={{...buttonStyle, touchAction: 'manipulation'}}
             >
               ↑
             </button>
@@ -73,25 +86,25 @@ const MobileControls = ({ onDirectionPress, onDirectionRelease }: MobileControls
 
             {/* Middle row */}
             <button
-              onTouchStart={() => handleTouchStart('left')}
-              onTouchEnd={() => handleTouchEnd('left')}
+              onTouchStart={(e) => handleTouchStart('left', e.nativeEvent)}
+              onTouchEnd={(e) => handleTouchEnd('left', e.nativeEvent)}
               onMouseDown={() => handleTouchStart('left')}
               onMouseUp={() => handleTouchEnd('left')}
               onMouseLeave={() => handleTouchEnd('left')}
-              className="w-10 h-10 text-white font-bold text-xl flex items-center justify-center active:scale-95 transition-transform"
-              style={buttonStyle}
+              className="w-12 h-12 text-white font-bold text-xl flex items-center justify-center active:scale-95 transition-transform select-none"
+              style={{...buttonStyle, touchAction: 'manipulation'}}
             >
               ←
             </button>
             <div></div>
             <button
-              onTouchStart={() => handleTouchStart('right')}
-              onTouchEnd={() => handleTouchEnd('right')}
+              onTouchStart={(e) => handleTouchStart('right', e.nativeEvent)}
+              onTouchEnd={(e) => handleTouchEnd('right', e.nativeEvent)}
               onMouseDown={() => handleTouchStart('right')}
               onMouseUp={() => handleTouchEnd('right')}
               onMouseLeave={() => handleTouchEnd('right')}
-              className="w-10 h-10 text-white font-bold text-xl flex items-center justify-center active:scale-95 transition-transform"
-              style={buttonStyle}
+              className="w-12 h-12 text-white font-bold text-xl flex items-center justify-center active:scale-95 transition-transform select-none"
+              style={{...buttonStyle, touchAction: 'manipulation'}}
             >
               →
             </button>
@@ -99,13 +112,13 @@ const MobileControls = ({ onDirectionPress, onDirectionRelease }: MobileControls
             {/* Bottom row */}
             <div></div>
             <button
-              onTouchStart={() => handleTouchStart('down')}
-              onTouchEnd={() => handleTouchEnd('down')}
+              onTouchStart={(e) => handleTouchStart('down', e.nativeEvent)}
+              onTouchEnd={(e) => handleTouchEnd('down', e.nativeEvent)}
               onMouseDown={() => handleTouchStart('down')}
               onMouseUp={() => handleTouchEnd('down')}
               onMouseLeave={() => handleTouchEnd('down')}
-              className="w-10 h-10 text-white font-bold text-xl flex items-center justify-center active:scale-95 transition-transform"
-              style={buttonStyle}
+              className="w-12 h-12 text-white font-bold text-xl flex items-center justify-center active:scale-95 transition-transform select-none"
+              style={{...buttonStyle, touchAction: 'manipulation'}}
             >
               ↓
             </button>

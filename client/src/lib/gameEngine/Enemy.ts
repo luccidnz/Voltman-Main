@@ -51,32 +51,36 @@ export class Enemy {
   }
 
   public update(deltaTime: number, maze: Maze, player: Player): void {
-    // Move towards target
+    // Update pathfinding cooldown
+    this.pathfindingCooldown -= deltaTime;
+
+    // Move towards target with smooth interpolation
     if (this.direction) {
       const dx = this.targetX - this.x;
       const dy = this.targetY - this.y;
       const distance = Math.sqrt(dx * dx + dy * dy);
 
-      if (distance < 0.1) {
-        // Reached target
+      if (distance < 0.05) {
+        // Snap to target when very close
         this.x = this.targetX;
         this.y = this.targetY;
         this.direction = null;
       } else {
-        // Move towards target
-        const moveDistance = this.moveSpeed * deltaTime;
-        this.x += (dx / distance) * moveDistance;
-        this.y += (dy / distance) * moveDistance;
+        // Smooth movement
+        const speed = this.isFrightened ? this.moveSpeed * 0.7 : this.moveSpeed;
+        const moveDistance = speed * deltaTime;
+        const normalizedDx = dx / distance;
+        const normalizedDy = dy / distance;
+        
+        this.x += normalizedDx * moveDistance;
+        this.y += normalizedDy * moveDistance;
       }
     }
 
-    // Choose new direction when not moving
-    if (!this.direction) {
-      this.pathfindingCooldown -= deltaTime;
-      if (this.pathfindingCooldown <= 0) {
-        this.chooseDirection(maze, player);
-        this.pathfindingCooldown = 100; // Small delay between direction changes
-      }
+    // Choose new direction when not moving and cooldown expired
+    if (!this.direction && this.pathfindingCooldown <= 0) {
+      this.chooseDirection(maze, player);
+      this.pathfindingCooldown = 200; // Reduced frequency for smoother movement
     }
 
     // Handle tunnel wrapping

@@ -181,10 +181,16 @@ export const useVoltManGame = create<VoltManGameStore>()(
         }
       });
 
-      // Check treat collection
-      const treatIndex = state.treats.findIndex(treat => 
-        Math.floor(state.player!.x) === treat.x && Math.floor(state.player!.y) === treat.y
-      );
+      // Check treat collection with proper collision detection
+      const playerGridX = Math.round(state.player.x);
+      const playerGridY = Math.round(state.player.y);
+      
+      const treatIndex = state.treats.findIndex(treat => {
+        const distance = Math.sqrt(
+          Math.pow(playerGridX - treat.x, 2) + Math.pow(playerGridY - treat.y, 2)
+        );
+        return distance < 0.6; // More lenient collision detection
+      });
 
       if (treatIndex !== -1) {
         const treat = state.treats[treatIndex];
@@ -192,13 +198,17 @@ export const useVoltManGame = create<VoltManGameStore>()(
         newTreats.splice(treatIndex, 1);
         
         if (treat.isPowerUp) {
-          // Power-up collected
+          // Power-up collected - properly activate power mode
           newState.score = state.score + 50;
-          newState.powerUpTimeLeft = 10000; // 10 seconds
+          newState.powerUpTimeLeft = 8000; // 8 seconds
           newState.treats = newTreats;
           
-          // Make enemies frightened
-          state.enemies.forEach(enemy => enemy.setFrightened(true));
+          // Make all enemies frightened
+          state.enemies.forEach(enemy => {
+            enemy.setFrightened(true);
+          });
+          
+          console.log('Power-up activated! Enemies are now frightened.');
           AudioManager.playSuccess();
         } else {
           // Regular treat
@@ -209,57 +219,97 @@ export const useVoltManGame = create<VoltManGameStore>()(
 
         // Check level completion
         if (newTreats.length === 0) {
-          // Level completed
+          // Level completed - award bonus points
+          const levelBonus = state.level * 100;
+          newState.score = (newState.score || state.score) + levelBonus;
           newState.level = state.level + 1;
           
-          // Generate new level
+          // Generate new level with increased difficulty
           const maze = new Maze(19, 21);
           const player = new Player(9, 15);
+          const baseSpeed = 0.08 + (state.level * 0.005); // Gradually increase enemy speed
           const enemies = [
             new Enemy(9, 9, 'red'),
-            new Enemy(8, 9, 'pink'),
+            new Enemy(8, 9, 'pink'), 
             new Enemy(10, 9, 'cyan'),
             new Enemy(9, 10, 'orange')
           ];
+          
+          // Increase enemy speed based on level
+          enemies.forEach(enemy => {
+            enemy['moveSpeed'] = baseSpeed;
+          });
           
           newState.maze = maze;
           newState.player = player;
           newState.enemies = enemies;
           newState.treats = maze.generateTreats();
           newState.powerUpTimeLeft = 0;
+          
+          console.log(`Level ${state.level + 1} started! Enemy speed: ${baseSpeed}`);
         }
       }
 
-      // Check enemy collisions
+      // Check enemy collisions with improved detection
       const collidingEnemy = state.enemies.find(enemy => {
         const dx = Math.abs(state.player!.x - enemy.x);
         const dy = Math.abs(state.player!.y - enemy.y);
-        return dx < 0.8 && dy < 0.8;
+        return dx < 0.7 && dy < 0.7; // More precise collision detection
       });
 
       if (collidingEnemy) {
         if (state.powerUpTimeLeft > 0 && collidingEnemy.isFrightened) {
-          // Eat enemy
-          const points = state.score < 200 ? 200 : Math.min(1600, state.score * 2);
+          // Eat enemy - progressive scoring system
+          let points = 200;
+          const enemiesEaten = 4 - state.enemies.filter(e => !e.isFrightened).length;
+          switch (enemiesEaten) {
+            case 1: points = 200; break;
+            case 2: points = 400; break;
+            case 3: points = 800; break;
+            case 4: points = 1600; break;
+          }
+          
           newState.score = state.score + points;
           
-          // Reset enemy to home
+          // Reset enemy to home and make it not frightened
           collidingEnemy.resetToHome();
+          collidingEnemy.setFrightened(false);
+          
+          console.log(`Enemy eaten! +${points} points`);
           AudioManager.playSuccess();
+          
+          // Add particle effect
+          const newParticles = [...state.particleEffects];
+          newParticles.push({
+            x: collidingEnemy.x,
+            y: collidingEnemy.y,
+            type: 'score',
+            life: 1000
+          });
+          newState.particleEffects = newParticles;
+          
         } else if (!collidingEnemy.isFrightened) {
           // Player hit by enemy
           const newLives = state.lives - 1;
           newState.lives = newLives;
           
+          console.log(`Player hit! Lives remaining: ${newLives}`);
+          
           if (newLives <= 0) {
             // Game over
             newState.phase = 'gameOver';
             AudioManager.stopBackgroundMusic();
+            console.log('Game Over!');
           } else {
-            // Reset positions
+            // Reset positions but keep score and level
             state.player.reset(9, 15);
-            state.enemies.forEach(enemy => enemy.resetToHome());
+            state.enemies.forEach(enemy => {
+              enemy.resetToHome();
+              enemy.setFrightened(false);
+            });
             newState.powerUpTimeLeft = 0;
+            
+            // Brief invincibility period could be added here
           }
         }
       }
