@@ -1,0 +1,193 @@
+🎮 Game Design Prompt: Volt-Man
+📖 Storyline / Lore
+
+Volt, once a normal cheeky black miniature schnauzer, is struck by mystic lightning fused with ancient runes (Image 1 reference: glowing rune paw + lightning bolt).
+
+He transforms into Volt-Man (Image 2 & 4 references: Volt standing upright with glowing runes, headphones, harness).
+
+Mutant rabbits (corrupted by shadow magic) now infest the Maze of Realms, an interdimensional labyrinth.
+
+Volt must dodge, outsmart, and zap the rabbits while collecting glowing treats that grant temporary power-up form (Image 2 reference: Volt radiating energy with skull flames).
+
+With the power-up active, Volt can chomp the mutant rabbits for bonus points.
+
+Goal: survive each maze, clear all treats, rack up points, and unlock new levels while unraveling Volt’s journey through the Rune Realms.
+
+🎮 Core Gameplay Mechanics
+
+Classic Pac-Man style maze gameplay:
+
+Volt-Man moves through mazes eating small glowing “treats.”
+
+Collect all treats to complete the level.
+
+Enemies: Mutant Rabbits
+
+Move through the maze chasing Volt.
+
+Contact = Volt loses a life.
+
+Power-Up Treats:
+
+Larger glowing biscuits/bones.
+
+Eating one gives Volt temporary power (X seconds).
+
+Rabbits turn “edible” (blue glowing, scared state).
+
+Scoring System:
+
+Treat = 10 points.
+
+Rabbit eaten under power-up = 200, 400, 800, 1600 (classic stacking system).
+
+Bonus pickups (glowsticks, bass speakers, skull charms) = 1000 points.
+
+🎨 Art & Visual Style
+
+Reference Images Provided (use these as base):
+
+Image 1: Rune pawprint + lightning (intro logo, loading screens, runic UI elements).
+
+Image 2: Volt standing upright, rune-powered (power-up Volt form).
+
+Image 3: Volt in semi-normal powered state (normal gameplay avatar).
+
+Image 4: Volt-Man in harness/headphones glowing rune chest (main character select + intro art).
+
+Style: Neon blue cyber-occult runes + glowing aura, dark backgrounds, clean glowing mazes.
+
+Maze Design:
+
+Neon-outlined walls (electric blue, cyan, occasional purple accents).
+
+Stars / rune glyphs faintly glowing in the background.
+
+Enemies (Mutant Rabbits):
+
+Small but creepy glowing rabbits with rune-corruption.
+
+Default: glowing red eyes.
+
+Power-up state: glowing blue, scared expression.
+
+🔊 Music & Sound
+
+Core Style:
+
+Retro Gameboy chiptune vibe, but mixed with modern sound design (clean synths, deep bass, crispy hi-hats).
+
+Tempo: ~130 BPM (arcade energetic).
+
+Tracks:
+
+Intro Theme: Heroic retro-electro track with rising synths.
+
+Maze Loop: Classic bouncy chiptune with modern basslines (repeatable, ~60 sec loop).
+
+Power-Up Theme: Faster, glitchier beat with sub-heavy drops.
+
+Game Over Theme: Short descending arpeggio with glitch FX.
+
+SFX:
+
+Volt eating treat = crunchy chomp.
+
+Volt power-up = bass drop + electric spark.
+
+Rabbit eaten = distorted squeak/pop.
+
+Losing life = glitchy zap + low bass tone.
+
+🖥️ Interface / UX
+
+Intro Screen:
+
+Glowing Rune Paw (Image 1) appears → lightning strike → Volt-Man logo appears.
+
+Menu Options:
+
+“Start Game”
+
+“High Scores”
+
+“Options” (music toggle, difficulty).
+
+In-Game HUD:
+
+Score top-left.
+
+Lives (Volt paw icons) bottom-left.
+
+Level indicator top-right.
+
+Pause Menu: clean neon overlay.
+
+🧩 Levels & Progression
+
+Level 1: Basic neon maze, 2 rabbits.
+
+Level 2+: Increasing complexity (more corridors, more rabbits).
+
+Every 3 levels: New maze design (rotating rune patterns in background).
+
+Difficulty scaling:
+
+More rabbits.
+
+Faster rabbit speed.
+
+Shorter power-up duration.
+
+Possible Bonus Rounds:
+
+“Treat Frenzy” → all treats are bonus points, no enemies.
+
+⚙️ Technical Specs for Development
+
+Platform: Android.
+
+Frameworks: Unity (C#), Godot (GDScript), or simple HTML5 wrapper via Replit (JS/Canvas).
+
+Controls:
+
+Swipe gestures (mobile).
+
+On-screen joystick optional.
+
+Performance Priority:
+
+Smooth 60 FPS.
+
+Low CPU drain (optimize neon glow via shaders).
+
+Scaling: Responsive resolution support (phones + tablets).
+
+🚀 Version 1 Goals
+
+Stable Pac-Man clone style gameplay with Volt-Man reskin.
+
+3–5 levels.
+
+High Score tracking.
+
+Power-Up mechanic fully functional.
+
+Clean UI + menu system.
+
+All music/SFX integrated.
+
+No bugs, smooth input.
+
+📌 Future Expansions (after v1)
+
+Boss Rabbits (giant mutant rabbit every 10 levels).
+
+Rune unlocks (Volt gains new aura effects).
+
+Multiplayer chase (online Volt vs Volt).
+
+Music-reactive mazes (bass drops pulse maze walls).
+
+⚡ Prompt Use:
+Take the above and feed it into Replit (Unity template / Godot engine / Phaser JS arcade engine). Provide the reference images (the ones you posted) as character + style guides. Use chiptune-style music packs upgraded with modern synth layers.

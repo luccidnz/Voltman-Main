@@ -1,0 +1,821 @@
+1) index.html
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no" />
+  <title>Volt-Man (v1 Skeleton)</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <!-- Title/Menu -->
+  <div id="overlay">
+    <h1>VOLT-MAN</h1>
+    <p class="sub">Arcade Maze Prototype · v1</p>
+
+    <div class="panel">
+      <button id="btnStart">Start</button>
+      <button id="btnHow">How to Play</button>
+      <button id="btnMute">🔊</button>
+    </div>
+
+    <div id="howto" class="panel hidden">
+      <h2>How to Play</h2>
+      <ul>
+        <li>Collect all treats (dots) to clear the level.</li>
+        <li>Avoid mutant rabbits (you have 3 lives).</li>
+        <li>Use arrow keys, WASD, on-screen D-Pad, or swipe.</li>
+        <li>Pause in-game with <kbd>P</kbd>.</li>
+      </ul>
+      <button id="btnCloseHow">Close</button>
+    </div>
+  </div>
+
+  <!-- HUD -->
+  <div id="hud">
+    <div>Score: <span id="score">0</span></div>
+    <div>Lives: <span id="lives">3</span></div>
+    <div>Level: <span id="level">1</span></div>
+    <div><button id="btnPause" class="hud-btn">Pause</button></div>
+  </div>
+
+  <canvas id="game" width="672" height="768" aria-label="Volt-Man game canvas"></canvas>
+
+  <!-- Mobile D-Pad -->
+  <div id="dpad">
+    <button data-dir="up" aria-label="Up">▲</button>
+    <div class="mid">
+      <button data-dir="left" aria-label="Left">◀</button>
+      <button data-dir="right" aria-label="Right">▶</button>
+    </div>
+    <button data-dir="down" aria-label="Down">▼</button>
+  </div>
+
+  <script src="main.js"></script>
+</body>
+</html>
+
+2) style.css
+:root{
+  --bg:#0a0f14;
+  --panel:#111826;
+  --accent:#28d7ff; /* neon-cyan */
+  --accent2:#7f5bff; /* purple accent */
+  --text:#e6f7ff;
+  --wall:#0fe;
+  --dot:#9ee8ff;
+  --player:#28d7ff;
+  --enemy:#ff3b3b;
+  --enemy-scared:#5bb1ff;
+}
+
+*{ box-sizing:border-box; -webkit-tap-highlight-color: transparent; }
+html,body{ height:100%; margin:0; background: radial-gradient(1200px 600px at 70% -10%, #112233 0%, #090e13 60%, #070a0f 100%); color:var(--text); font-family:system-ui, Segoe UI, Roboto, Helvetica, Arial, sans-serif; }
+
+#game{
+  display:block;
+  margin: 88px auto 90px;
+  border:1px solid rgba(255,255,255,0.08);
+  background:
+    radial-gradient(600px 300px at 50% -80%, rgba(40,215,255,0.09), transparent 70%),
+    radial-gradient(600px 300px at 10% 120%, rgba(127,91,255,0.08), transparent 70%),
+    #06090f;
+  box-shadow: 0 10px 30px rgba(0,0,0,0.35), inset 0 0 40px rgba(40,215,255,0.05);
+  border-radius: 12px;
+}
+
+#overlay{
+  position:fixed; inset:0; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:18px;
+  background: linear-gradient(180deg, rgba(7,10,15,0.85) 0%, rgba(7,10,15,0.92) 100%);
+  backdrop-filter: blur(2px);
+}
+#overlay.hidden{ display:none; }
+#overlay h1{ margin:0; letter-spacing:2px; font-size: clamp(28px, 4vw, 56px); text-shadow: 0 0 18px rgba(40,215,255,0.65); color:var(--accent); }
+#overlay .sub{ opacity:.8; margin-top:-8px; }
+
+.panel{
+  background:linear-gradient(180deg, rgba(17,24,38,0.9), rgba(12,18,30,0.9));
+  border:1px solid rgba(255,255,255,0.08);
+  border-radius:14px;
+  padding:16px;
+  box-shadow: 0 10px 24px rgba(0,0,0,0.35), inset 0 0 24px rgba(127,91,255,0.08);
+}
+.hidden{ display:none; }
+
+button{
+  background: linear-gradient(180deg, rgba(40,215,255,0.12), rgba(40,215,255,0.05));
+  border:1px solid rgba(40,215,255,0.35);
+  color: var(--text);
+  padding:10px 16px;
+  border-radius:10px;
+  cursor:pointer;
+  font-weight:600;
+  letter-spacing:.5px;
+}
+button:hover{ filter:brightness(1.1); }
+button:active{ transform: translateY(1px); }
+
+#hud{
+  position:fixed; top:10px; left:50%; transform:translateX(-50%);
+  display:flex; gap:14px; align-items:center; background:rgba(8,12,18,0.6);
+  padding:8px 14px; border-radius:12px; border:1px solid rgba(255,255,255,0.07);
+}
+.hud-btn{ padding:6px 10px; font-size:14px; }
+
+#dpad{
+  position:fixed; bottom:14px; left:50%; transform:translateX(-50%);
+  display:flex; flex-direction:column; gap:8px; align-items:center; user-select:none;
+}
+#dpad .mid{ display:flex; gap:8px; }
+#dpad button{ width:64px; height:64px; font-size:24px; border-radius:16px; }
+
+@media (min-width:900px){
+  #dpad{ display:none; } /* hide dpad on desktop */
+}
+
+3) main.js
+/* Volt-Man v1 Skeleton
+   - Grid-based maze
+   - Player movement with input queue (smooth corners)
+   - Enemy (rabbit) pathing with bias toward player (grid-aware random walk + A* on junctions)
+   - Pellets, scoring, lives, basic level flow
+   - Menu / Pause
+   - Mobile: virtual D-Pad + swipe
+*/
+
+(() => {
+  // --- Canvas & Context ---
+  const canvas = document.getElementById("game");
+  const ctx = canvas.getContext("2d");
+
+  // --- UI Elements ---
+  const overlay = document.getElementById("overlay");
+  const btnStart = document.getElementById("btnStart");
+  const btnHow = document.getElementById("btnHow");
+  const btnCloseHow = document.getElementById("btnCloseHow");
+  const btnMute = document.getElementById("btnMute");
+  const btnPause = document.getElementById("btnPause");
+  const scoreEl = document.getElementById("score");
+  const livesEl = document.getElementById("lives");
+  const levelEl = document.getElementById("level");
+  const howto = document.getElementById("howto");
+
+  const dpad = document.getElementById("dpad");
+
+  // --- Game constants ---
+  const TILE = 24;               // tile size in px
+  const COLS = 28;               // classic-ish width
+  const ROWS = 32;               // height
+  canvas.width = COLS * TILE;
+  canvas.height = ROWS * TILE;
+
+  const FPS = 60;
+  const PLAYER_SPEED = 3.0;      // px per frame
+  const ENEMY_SPEED = 2.7;
+  const PELLET_SCORE = 10;
+
+  // Colors / style
+  const COLORS = {
+    bg: "#06090f",
+    wall: "#00ffee",
+    dot: "#9ee8ff",
+    player: "#28d7ff",
+    enemy: "#ff3b3b",
+    enemyScared: "#5bb1ff",
+    text: "rgba(230,247,255,0.9)",
+    gridGlow: "rgba(40,215,255,0.08)"
+  };
+
+  // --- Audio (placeholders; hook real assets later) ---
+  const audio = {
+    enabled: true,
+    eat: new Audio(),   // TODO: add src when you have assets
+    die: new Audio(),
+    start: new Audio(),
+    // For now, we won't load sources to keep it silent & error-free
+  };
+
+  function play(a) { if (audio.enabled && a && a.play) a.play().catch(()=>{}); }
+  function toggleMute(){
+    audio.enabled = !audio.enabled;
+    btnMute.textContent = audio.enabled ? "🔊" : "🔇";
+  }
+
+  // --- Simple PRNG for consistent randomness ---
+  let seed = 1337;
+  function rand() {
+    seed = (seed * 16807) % 2147483647;
+    return (seed - 1) / 2147483646;
+  }
+
+  // --- Level layout: 0 empty, 1 wall, 2 pellet, 3 power pellet (unused in v1), 9 spawn
+  // Quick handcrafted maze (border + lanes). Feel free to replace with a designer later.
+  const baseMap = (() => {
+    const map = Array.from({length: ROWS}, () => Array(COLS).fill(2)); // pellets by default
+    // outer walls
+    for (let r=0; r<ROWS; r++){
+      for (let c=0; c<COLS; c++){
+        if (r===0 || r===ROWS-1 || c===0 || c===COLS-1) map[r][c]=1;
+      }
+    }
+    // carve corridors
+    const carve = (r0, r1, c0, c1) => {
+      for(let r=r0; r<=r1; r++){
+        for(let c=c0; c<=c1; c++){
+          map[r][c] = (map[r][c]===1 ? 1 : 0); // empty
+        }
+      }
+    };
+    // main lanes
+    carve(2, 2, 2, COLS-3);
+    carve(ROWS-3, ROWS-3, 2, COLS-3);
+    carve(6, 6, 2, COLS-3);
+    carve(10,10, 2, COLS-3);
+    carve(14,14, 2, COLS-3);
+    carve(18,18, 2, COLS-3);
+    carve(22,22, 2, COLS-3);
+    carve(26,26, 2, COLS-3);
+
+    // verticals
+    const verts = [4, 8, 12, 16, 20, 24];
+    verts.forEach(c => carve(2, ROWS-3, c, c));
+
+    // add rabbit pen in middle
+    const penTop = Math.floor(ROWS/2)-2;
+    const penLeft = Math.floor(COLS/2)-4;
+    carve(penTop, penTop+4, penLeft, penLeft+8);
+    // walls around pen
+    for(let c=penLeft; c<=penLeft+8; c++){
+      map[penTop][c]=1; map[penTop+4][c]=1;
+    }
+    for(let r=penTop; r<=penTop+4; r++){
+      map[r][penLeft]=1; map[r][penLeft+8]=1;
+    }
+    // gate
+    map[penTop+4][penLeft+4]=0;
+
+    // pellets: fill empties with pellets, but keep walls as 1 and gate 0
+    for (let r=0; r<ROWS; r++){
+      for (let c=0; c<COLS; c++){
+        if (map[r][c]===0) map[r][c]=2; // pellet
+      }
+    }
+    // restore walls
+    for (let r=0; r<ROWS; r++){
+      for (let c=0; c<COLS; c++){
+        if (r===0||r===ROWS-1||c===0||c===COLS-1) map[r][c]=1;
+      }
+    }
+    // keep pen area empty (no pellets)
+    carve(penTop+1, penTop+3, penLeft+1, penLeft+7);
+
+    // power pellets at corners (for Phase 2; score-only for now)
+    map[2][2]=3; map[2][COLS-3]=3; map[ROWS-3][2]=3; map[ROWS-3][COLS-3]=3;
+
+    // player spawn
+    map[ROWS-6][Math.floor(COLS/2)]=9;
+
+    return map;
+  })();
+
+  // --- Deep clone for new level ---
+  function cloneMap(src){ return src.map(row => row.slice()); }
+
+  // --- Entity helpers ---
+  function tileAt(map, x, y){ // world pixel => tile value
+    const c = Math.floor(x / TILE);
+    const r = Math.floor(y / TILE);
+    if (r<0 || r>=ROWS || c<0 || c>=COLS) return 1;
+    return map[r][c];
+  }
+  function isWall(map, tc, tr){
+    if (tr<0||tr>=ROWS||tc<0||tc>=COLS) return true;
+    return map[tr][tc]===1;
+  }
+  function centerOf(tc,tr){ return {x: tc*TILE + TILE/2, y: tr*TILE + TILE/2}; }
+  function toTile(x,y){ return {tc: Math.floor(x/TILE), tr: Math.floor(y/TILE)}; }
+  function almostAligned(v){ const m = v % TILE; return (m < 0.5 || m > TILE-0.5); }
+
+  // --- Pathfinding (A* on grid for junction decisions) ---
+  const DIRS = [
+    {dx:  1, dy:  0, name:"right"},
+    {dx: -1, dy:  0, name:"left"},
+    {dx:  0, dy:  1, name:"down"},
+    {dx:  0, dy: -1, name:"up"},
+  ];
+
+  function neighbors(map, node){
+    const out = [];
+    for (const d of DIRS){
+      const nc = node.c + d.dx;
+      const nr = node.r + d.dy;
+      if (!isWall(map, nc, nr)) out.push({c:nc, r:nr});
+    }
+    return out;
+  }
+
+  function heuristic(a,b){ return Math.abs(a.c-b.c)+Math.abs(a.r-b.r); }
+
+  function astar(map, start, goal){
+    const key = (n)=> `${n.c},${n.r}`;
+    const open = new Set([key(start)]);
+    const came = new Map();
+    const g = new Map([[key(start),0]]);
+    const f = new Map([[key(start),heuristic(start,goal)]]);
+
+    function lowest(){
+      let best=null, bestScore=Infinity;
+      for (const k of open){
+        const s = f.get(k) ?? Infinity;
+        if (s < bestScore){ bestScore=s; best=k; }
+      }
+      return best;
+    }
+
+    while(open.size){
+      const currentK = lowest();
+      const [cc,rr] = currentK.split(",").map(Number);
+      const current = {c:cc, r:rr};
+      if (current.c===goal.c && current.r===goal.r){
+        // reconstruct
+        const path = [current];
+        let ck = currentK;
+        while(came.has(ck)){ ck = came.get(ck); const [c2,r2]=ck.split(",").map(Number); path.push({c:c2,r:r2}); }
+        path.reverse();
+        return path;
+      }
+      open.delete(currentK);
+      for (const nb of neighbors(map, current)){
+        const nbK = key(nb);
+        const tentative = (g.get(currentK) ?? Infinity) + 1;
+        if (tentative < (g.get(nbK) ?? Infinity)){
+          came.set(nbK, currentK);
+          g.set(nbK, tentative);
+          f.set(nbK, tentative + heuristic(nb, goal));
+          if (!open.has(nbK)) open.add(nbK);
+        }
+      }
+    }
+    return null; // no path
+  }
+
+  // --- Game State ---
+  const state = {
+    map: cloneMap(baseMap),
+    score: 0,
+    lives: 3,
+    level: 1,
+    running: false,
+    paused: false,
+    pelletsLeft: 0,
+    powerMode: false, // Phase 2
+    powerTimer: 0
+  };
+
+  function countPellets(){
+    let n=0;
+    for (let r=0;r<ROWS;r++) for(let c=0;c<COLS;c++){
+      if (state.map[r][c]===2 || state.map[r][c]===3) n++;
+    }
+    state.pelletsLeft = n;
+  }
+
+  // --- Player ---
+  const player = {
+    x: 0, y: 0,
+    dir: {x:0,y:0},
+    nextDir: {x:0,y:0},
+    speed: PLAYER_SPEED,
+    radius: TILE*0.42
+  };
+
+  function spawnPlayer(){
+    for (let r=0;r<ROWS;r++) for (let c=0;c<COLS;c++){
+      if (state.map[r][c]===9){
+        const p = centerOf(c,r);
+        player.x = p.x; player.y = p.y;
+        player.dir = {x:0,y:0};
+        player.nextDir = {x:0,y:0};
+        return;
+      }
+    }
+    // fallback center
+    const p = centerOf(Math.floor(COLS/2), ROWS-6);
+    player.x=p.x; player.y=p.y;
+  }
+
+  // --- Enemies (mutant rabbits) ---
+  function makeEnemy(id, c, r){
+    return {
+      id,
+      x: centerOf(c,r).x,
+      y: centerOf(c,r).y,
+      dir: {x:0,y:0},
+      speed: ENEMY_SPEED,
+      scared: false, // Phase 2
+      radius: TILE*0.40,
+      thinkCooldown: 0
+    };
+  }
+  const enemies = [];
+
+  function spawnEnemies(){
+    enemies.length = 0;
+    const midC = Math.floor(COLS/2);
+    const penR = Math.floor(ROWS/2)+2;
+    enemies.push(makeEnemy(0, midC-2, penR));
+    enemies.push(makeEnemy(1, midC,   penR));
+    enemies.push(makeEnemy(2, midC+2, penR));
+    enemies.forEach(e => e.dir = {x: (rand()<0.5?1:-1), y:0});
+  }
+
+  // --- Input ---
+  const keys = new Set();
+  window.addEventListener("keydown", e=>{
+    if (e.key==="ArrowUp"||e.key==="w") setNextDir(0,-1);
+    if (e.key==="ArrowDown"||e.key==="s") setNextDir(0,1);
+    if (e.key==="ArrowLeft"||e.key==="a") setNextDir(-1,0);
+    if (e.key==="ArrowRight"||e.key==="d") setNextDir(1,0);
+    if (e.key==="p") togglePause();
+  });
+
+  function setNextDir(dx,dy){ player.nextDir = {x:dx, y:dy}; }
+
+  // D-Pad buttons
+  dpad.addEventListener("click", (e)=>{
+    const btn = e.target.closest("button[data-dir]");
+    if(!btn) return;
+    const d = btn.getAttribute("data-dir");
+    if (d==="up") setNextDir(0,-1);
+    if (d==="down") setNextDir(0, 1);
+    if (d==="left") setNextDir(-1,0);
+    if (d==="right") setNextDir(1,0);
+  });
+
+  // Swipe input
+  let touchStart = null;
+  window.addEventListener("touchstart", e=>{
+    const t = e.changedTouches[0];
+    touchStart = {x:t.clientX, y:t.clientY, t:performance.now()};
+  }, {passive:true});
+  window.addEventListener("touchend", e=>{
+    if(!touchStart) return;
+    const t = e.changedTouches[0];
+    const dx = t.clientX - touchStart.x;
+    const dy = t.clientY - touchStart.y;
+    if (Math.hypot(dx,dy) > 24){
+      if (Math.abs(dx) > Math.abs(dy)){
+        setNextDir(dx>0?1:-1, 0);
+      } else {
+        setNextDir(0, dy>0?1:-1);
+      }
+    }
+    touchStart = null;
+  }, {passive:true});
+
+  // --- Movement / collisions ---
+  function canMoveDir(map, x, y, dx, dy, radius){
+    // project next center tile line step
+    const nx = x + dx;
+    const ny = y + dy;
+    // check four corners against walls
+    const left = nx - radius, right = nx + radius;
+    const top = ny - radius,  bottom = ny + radius;
+    const tiles = [
+      toTile(left, top),
+      toTile(right, top),
+      toTile(left, bottom),
+      toTile(right, bottom),
+    ];
+    return tiles.every(t => !isWall(map, t.tc, t.tr));
+  }
+
+  function tryTurnAtCenter(entity, next){
+    const {tc,tr} = toTile(entity.x, entity.y);
+    const center = centerOf(tc,tr);
+    const nearCenter = Math.abs(entity.x-center.x) < 2.5 && Math.abs(entity.y-center.y)<2.5;
+    if(!nearCenter) return false;
+    // hard snap to center to avoid jitter
+    entity.x = center.x; entity.y = center.y;
+    if (canMoveDir(state.map, entity.x, entity.y, next.x, next.y, entity.radius)){
+      entity.dir = {x:next.x, y:next.y};
+      return true;
+    }
+    return false;
+  }
+
+  function stepEntity(entity){
+    // queued turn at tile center
+    if ((entity===player) && (player.nextDir.x||player.nextDir.y)){
+      tryTurnAtCenter(player, player.nextDir);
+    }
+    // forward move if allowed
+    const spd = entity.speed;
+    const nx = entity.x + entity.dir.x * spd;
+    const ny = entity.y + entity.dir.y * spd;
+    if (canMoveDir(state.map, entity.x, entity.y, entity.dir.x*spd, entity.dir.y*spd, entity.radius)){
+      entity.x = nx; entity.y = ny;
+    } else {
+      // stop at wall
+      const {tc,tr} = toTile(entity.x, entity.y);
+      const center = centerOf(tc,tr);
+      // nudge toward center to align
+      entity.x += Math.sign(center.x-entity.x) * Math.min(1.5, Math.abs(center.x-entity.x));
+      entity.y += Math.sign(center.y-entity.y) * Math.min(1.5, Math.abs(center.y-entity.y));
+      if (entity!==player){
+        // enemies pick a new direction when blocked
+        pickEnemyDir(entity);
+      }
+    }
+  }
+
+  // --- Enemy AI ---
+  function atJunction(entity){
+    const {tc,tr} = toTile(entity.x, entity.y);
+    // junction if 3+ exits
+    let exits=0;
+    for(const d of DIRS){
+      if(!isWall(state.map, tc+d.dx, tr+d.dy)) exits++;
+    }
+    return exits>=3;
+  }
+
+  function pickEnemyDir(e){
+    const {tc,tr} = toTile(e.x, e.y);
+    const pTile = toTile(player.x, player.y);
+
+    // prefer A* at junctions, otherwise random with bias
+    if (atJunction(e)){
+      const path = astar(state.map, {c:tc,r:tr}, pTile);
+      if (path && path.length>1){
+        const next = path[1];
+        const dc = next.c - tc, dr = next.r - tr;
+        e.dir = {x:Math.sign(dc), y:Math.sign(dr)};
+        return;
+      }
+    }
+    // fallback biased random
+    const choices = DIRS.filter(d=>{
+      // avoid reversing 180° unless forced
+      if (e.dir && (d.dx===-e.dir.x && d.dy===-e.dir.y)) return false;
+      return !isWall(state.map, tc+d.dx, tr+d.dy);
+    });
+    if (choices.length===0){
+      e.dir = {x:-e.dir.x, y:-e.dir.y};
+      return;
+    }
+    // bias toward player vector
+    const vx = Math.sign(pTile.tc - tc);
+    const vy = Math.sign(pTile.tr - tr);
+    choices.sort((a,b)=>{
+      const sa = (a.dx===vx?1:0)+(a.dy===vy?1:0);
+      const sb = (b.dx===vx?1:0)+(b.dy===vy?1:0);
+      return sb-sa || (rand()<0.5?1:-1);
+    });
+    e.dir = {x:choices[0].dx, y:choices[0].dy};
+  }
+
+  // --- Eating pellets, collisions, win/lose ---
+  function eatPellet(){
+    const {tc,tr} = toTile(player.x, player.y);
+    const v = state.map[tr][tc];
+    if (v===2){
+      state.map[tr][tc]=0;
+      state.score += PELLET_SCORE;
+      state.pelletsLeft--;
+      scoreEl.textContent = state.score;
+      // play(audio.eat);
+    } else if (v===3){
+      state.map[tr][tc]=0;
+      state.score += 50;
+      state.pelletsLeft--;
+      scoreEl.textContent = state.score;
+      // Phase 2: activate power mode here
+    }
+  }
+
+  function collide(a,b){
+    const dx=a.x-b.x, dy=a.y-b.y;
+    const dist = Math.hypot(dx,dy);
+    return dist < (a.radius + b.radius - 2);
+  }
+
+  function checkDeaths(){
+    for (const e of enemies){
+      if (collide(player, e)){
+        // In v1, touching = lose life
+        loseLife();
+        return;
+      }
+    }
+  }
+
+  function loseLife(){
+    state.lives--;
+    livesEl.textContent = state.lives;
+    // play(audio.die);
+    if (state.lives<=0){
+      gameOver();
+    } else {
+      spawnPlayer();
+      // brief pause flair
+      pauseFor(700);
+    }
+  }
+
+  function checkLevelComplete(){
+    if (state.pelletsLeft<=0){
+      nextLevel();
+    }
+  }
+
+  function nextLevel(){
+    state.level++;
+    levelEl.textContent = state.level;
+    state.map = cloneMap(baseMap);
+    countPellets();
+    spawnPlayer();
+    spawnEnemies();
+    pauseFor(600);
+  }
+
+  function gameOver(){
+    state.running=false;
+    overlay.classList.remove("hidden");
+    document.querySelector("#overlay h1").textContent = "GAME OVER";
+    document.querySelector("#overlay .sub").textContent = `Final Score: ${state.score}`;
+  }
+
+  // --- Pause / timers ---
+  let hardPauseUntil = 0;
+  function pauseFor(ms){ hardPauseUntil = performance.now()+ms; }
+
+  function togglePause(){
+    if (!state.running) return;
+    state.paused = !state.paused;
+    btnPause.textContent = state.paused ? "Resume" : "Pause";
+  }
+
+  // --- Drawing ---
+  function drawGridGlow(){
+    ctx.save();
+    ctx.strokeStyle = COLORS.gridGlow;
+    ctx.lineWidth = 1;
+    for (let r=0;r<=ROWS;r++){
+      ctx.beginPath();
+      ctx.moveTo(0, r*TILE+.5);
+      ctx.lineTo(canvas.width, r*TILE+.5);
+      ctx.stroke();
+    }
+    for (let c=0;c<=COLS;c++){
+      ctx.beginPath();
+      ctx.moveTo(c*TILE+.5, 0);
+      ctx.lineTo(c*TILE+.5, canvas.height);
+      ctx.stroke();
+    }
+    ctx.restore();
+  }
+
+  function drawMap(){
+    // walls & pellets
+    for (let r=0;r<ROWS;r++){
+      for (let c=0;c<COLS;c++){
+        const v = state.map[r][c];
+        if (v===1){
+          // neon wall
+          ctx.strokeStyle = COLORS.wall;
+          ctx.lineWidth = 3;
+          ctx.strokeRect(c*TILE+2, r*TILE+2, TILE-4, TILE-4);
+        } else if (v===2){
+          // pellet
+          ctx.fillStyle = COLORS.dot;
+          ctx.beginPath();
+          ctx.arc(c*TILE+TILE/2, r*TILE+TILE/2, 3, 0, Math.PI*2);
+          ctx.fill();
+        } else if (v===3){
+          // power pellet (Phase 2), draw larger
+          ctx.fillStyle = COLORS.dot;
+          ctx.beginPath();
+          ctx.arc(c*TILE+TILE/2, r*TILE+TILE/2, 6, 0, Math.PI*2);
+          ctx.fill();
+        }
+      }
+    }
+  }
+
+  function drawPlayer(){
+    ctx.save();
+    ctx.fillStyle = COLORS.player;
+    // simple Volt orb placeholder (swap with sprite later)
+    ctx.beginPath();
+    ctx.arc(player.x, player.y, player.radius, 0, Math.PI*2);
+    ctx.fill();
+
+    // tiny "snout" wedge to show direction
+    if (player.dir.x || player.dir.y){
+      ctx.fillStyle = "#eaffff";
+      ctx.beginPath();
+      const ang = Math.atan2(player.dir.y, player.dir.x);
+      ctx.moveTo(player.x, player.y);
+      ctx.arc(player.x, player.y, player.radius, ang-0.35, ang+0.35);
+      ctx.lineTo(player.x, player.y);
+      ctx.fill();
+    }
+    ctx.restore();
+  }
+
+  function drawEnemy(e){
+    ctx.save();
+    ctx.fillStyle = e.scared ? COLORS.enemyScared : COLORS.enemy;
+    ctx.beginPath();
+    ctx.arc(e.x, e.y, e.radius, 0, Math.PI*2);
+    ctx.fill();
+
+    // ears (rabbit vibe)
+    ctx.fillRect(e.x-4, e.y - e.radius - 10, 4, 10);
+    ctx.fillRect(e.x+0, e.y - e.radius - 10, 4, 10);
+
+    // eyes
+    ctx.fillStyle = "#fff";
+    ctx.fillRect(e.x-5, e.y-3, 3, 3);
+    ctx.fillRect(e.x+2, e.y-3, 3, 3);
+    ctx.restore();
+  }
+
+  function draw(){
+    ctx.clearRect(0,0,canvas.width,canvas.height);
+    drawGridGlow();
+    drawMap();
+    drawPlayer();
+    enemies.forEach(drawEnemy);
+  }
+
+  // --- Update loop ---
+  let last = performance.now();
+  function update(dt){
+    // hard pause (between life/level)
+    if (performance.now() < hardPauseUntil) return;
+
+    if (state.paused || !state.running) return;
+
+    stepEntity(player);
+    eatPellet();
+    enemies.forEach(e=>{
+      // think occasionally
+      if (e.thinkCooldown <= 0 && atJunction(e)){
+        pickEnemyDir(e);
+        e.thinkCooldown = 8 + Math.floor(rand()*10);
+      } else {
+        e.thinkCooldown--;
+      }
+      stepEntity(e);
+    });
+
+    checkDeaths();
+    checkLevelComplete();
+  }
+
+  function loop(ts){
+    const dt = (ts - last) / (1000/FPS);
+    last = ts;
+    update(dt);
+    draw();
+    requestAnimationFrame(loop);
+  }
+
+  // --- Game start/reset ---
+  function resetGame(){
+    state.map = cloneMap(baseMap);
+    state.score = 0;
+    state.lives = 3;
+    state.level = 1;
+    scoreEl.textContent = "0";
+    livesEl.textContent = "3";
+    levelEl.textContent = "1";
+    countPellets();
+    spawnPlayer();
+    spawnEnemies();
+  }
+
+  function startGame(){
+    resetGame();
+    overlay.classList.add("hidden");
+    state.running = true;
+    state.paused = false;
+    btnPause.textContent = "Pause";
+    // play(audio.start);
+  }
+
+  // --- Wire UI ---
+  btnStart.addEventListener("click", startGame);
+  btnHow.addEventListener("click", ()=> howto.classList.remove("hidden"));
+  btnCloseHow.addEventListener("click", ()=> howto.classList.add("hidden"));
+  btnMute.addEventListener("click", toggleMute);
+  btnPause.addEventListener("click", togglePause);
+
+  // Start loop
+  requestAnimationFrame(loop);
+
+  // Accessibility: prevent long-press text selection on mobile
+  document.addEventListener("gesturestart", e=> e.preventDefault());
+})();

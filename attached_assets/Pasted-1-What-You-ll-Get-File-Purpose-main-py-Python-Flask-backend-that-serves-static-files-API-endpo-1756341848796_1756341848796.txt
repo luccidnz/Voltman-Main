@@ -1,0 +1,188 @@
+1️⃣ What You’ll Get
+File	Purpose
+main.py	Python Flask backend that serves static files & API endpoints.
+static/	All front‑end assets – HTML, CSS, JS, images, and the soundscape.
+templates/index.html	The single page app that loads the 3D/2D game canvas.
+replit.nix (or requirements.txt if you’re on Repl.it’s Python environment)	Environment definition – installs Flask, Pygame‑like libs, etc.
+Dockerfile	Optional: run locally with Docker for consistency.
+README.md	How to launch & tweak the game.
+2️⃣ Folder Layout
+/VoltRunnerReplit
+├─ main.py          # Flask entrypoint
+├─ templates/
+│   └─ index.html   # HTML page that bootstraps the game
+├─ static/
+│   ├─ css/
+│   │   └─ style.css
+│   ├─ js/
+│   │   └─ main.js          # Game logic (canvas, physics)
+│   │   └─ sound.js         # Audio handling
+│   ├─ img/                 # Sprites / backgrounds
+│   └─ audio/               # Voice‑over & ambient sounds
+├─ replit.nix        # Replit environment spec (or requirements.txt)
+├─ Dockerfile         # Optional, for local dev
+└─ README.md
+
+3️⃣ replit.nix – The Environment
+Tip: If you’re using the Python template on Repl.it, just drop a requirements.txt with the same content.
+
+{ pkgs }:
+let
+  python = pkgs.python39Full;
+in
+pkgs.mkShell {
+  buildInputs = [
+    python
+    pkgs.nodejs_18         # For npm if you want to bundle assets
+    pkgs.flask
+    pkgs.gcc                # Needed for some deps
+  ];
+
+  shellHook = ''
+    export FLASK_APP=main.py
+    export FLASK_ENV=development
+    export PYTHONPATH=${toString .}/src:$PYTHONPATH
+  '';
+}
+
+4️⃣ requirements.txt (Alternative)
+If you’re on the Python template, this will do the trick:
+
+Flask==3.0.2
+gunicorn==22.0.0
+pydub==0.25.1      # For audio manipulation if needed
+
+5️⃣ main.py – Flask Backend
+# main.py
+from flask import Flask, render_template, send_from_directory
+import os
+
+app = Flask(__name__, static_folder='static', template_folder='templates')
+
+@app.route('/')
+def index():
+    return render_template('index.html')
+
+# Serve any other static files (css/js/img/audio)
+@app.route('/<path:filename>')
+def static_files(filename):
+    return send_from_directory(app.static_folder, filename)
+
+if __name__ == '__main__':
+    # Replit runs with `python main.py` by default
+    app.run(host='0.0.0.0', port=int(os.environ.get('PORT', 8080)), debug=True)
+
+6️⃣ Front‑End Boilerplate
+templates/index.html
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>VoltRunner – Pet POV Adventure</title>
+<link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+<div id="game-container"></div>
+
+<script src="/js/main.js"></script>
+<script src="/js/sound.js"></script>
+</body>
+</html>
+
+static/css/style.css
+body, html {
+  margin:0; padding:0;
+  background:#111;
+  color:#fff;
+  font-family:'Courier New', monospace;
+}
+#game-container {
+  width:100vw; height:100vh;
+  overflow:hidden;
+}
+canvas { display:block; }
+
+static/js/main.js
+// main.js – Basic game loop & canvas setup
+
+const canvas = document.createElement('canvas');
+canvas.width = window.innerWidth;
+canvas.height = window.innerHeight;
+document.getElementById('game-container').appendChild(canvas);
+const ctx = canvas.getContext('2d');
+
+// Simple sprite loader
+class Sprite {
+  constructor(src) { this.img = new Image(); this.img.src = src; }
+}
+const dogSprite = new Sprite('/img/volt.png'); // Put a cute schnauzer sprite here
+
+let posX = 0, posY = canvas.height / 2;
+
+// Basic physics & input
+window.addEventListener('keydown', e => {
+  if (e.key === 'ArrowRight') posX += 5;
+  if (e.key === 'ArrowLeft') posX -= 5;
+});
+
+function gameLoop() {
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+  // Draw background
+  ctx.fillStyle = '#222';
+  ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+  // Draw dog sprite (centered vertically)
+  if (dogSprite.img.complete) {
+    ctx.drawImage(dogSprite.img, posX, posY - dogSprite.img.height / 2);
+  }
+
+  requestAnimationFrame(gameLoop);
+}
+gameLoop();
+
+static/js/sound.js
+// sound.js – Very light audio handling
+
+const ambient = new Audio('/audio/ambient.mp3');
+ambient.loop = true;
+ambient.volume = 0.4;
+ambient.play();
+
+function playSound(src) {
+  const s = new Audio(src);
+  s.play();
+}
+
+7️⃣ Add Your Assets
+Folder	What to drop
+static/img/	volt.png, any background tiles, UI icons.
+static/audio/	ambient.mp3, voice‑overs (volt.wav, etc.).
+Tip: Replit lets you drag & drop files into the file tree – just click the “+” icon and pick Upload File.
+
+8️⃣ Run It
+Replit
+
+Click Run at the top.
+The console will show something like Running on http://0.0.0.0:8080.
+Open that URL in a browser to see the game live.
+Locally (Docker optional)
+
+# Build & run container
+docker build -t voltrunner .
+docker run -p 8080:8080 voltrunner
+
+Navigate to http://localhost:8080.
+
+9️⃣ Quick Enhancements
+Feature	How
+Physics	Integrate matter.js or a lightweight physics lib in main.js.
+AI Dialogue	Add a /api/volt-voice endpoint that streams text‑to‑speech (use gTTS or an offline TTS).
+Remote Control	Expose WebSocket endpoints (flask-socketio) to let you send commands from another Replit tab.
+Level System	Load JSON level files from /static/levels/*.json and parse them in main.js.
+10️⃣ Final Checklist
+ ✅ Replit environment set (replit.nix or requirements.txt)
+ ✅ Flask backend running
+ ✅ Static assets uploaded
+ ✅ Browser shows the canvas with the dog sprite
+ 🚀 Optional: Add sound, physics, or AI layers
