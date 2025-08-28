@@ -62,19 +62,23 @@ const VoltManGame = () => {
   useEffect(() => {
     let animationFrame: number;
     let lastTime = 0;
+    const targetFPS = 60;
+    const frameInterval = 1000 / targetFPS;
 
     const gameLoop = (currentTime: number) => {
       const deltaTime = currentTime - lastTime;
       
-      if (deltaTime >= 16.67) { // 60 FPS
+      if (deltaTime >= frameInterval) {
         updateGame(deltaTime);
-        lastTime = currentTime;
+        lastTime = currentTime - (deltaTime % frameInterval);
       }
       
-      animationFrame = requestAnimationFrame(gameLoop);
+      if (gameState.phase === 'playing' && !gameState.isPaused) {
+        animationFrame = requestAnimationFrame(gameLoop);
+      }
     };
 
-    if (gameState.phase === 'playing') {
+    if (gameState.phase === 'playing' && !gameState.isPaused) {
       animationFrame = requestAnimationFrame(gameLoop);
     }
 
@@ -83,7 +87,7 @@ const VoltManGame = () => {
         cancelAnimationFrame(animationFrame);
       }
     };
-  }, [gameState.phase, updateGame]);
+  }, [gameState.phase, gameState.isPaused, updateGame]);
 
   return (
     <div 

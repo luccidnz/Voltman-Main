@@ -7,6 +7,8 @@ export class GameRenderer {
   private tileSize: number = DEFAULT_CONFIG.tileSize;
   private offsetX: number = 0;
   private offsetY: number = 0;
+  private images: Record<string, HTMLImageElement> = {};
+  private imagesLoaded: boolean = false;
 
   constructor(canvas: HTMLCanvasElement) {
     this.canvas = canvas;
@@ -16,6 +18,37 @@ export class GameRenderer {
     }
     this.ctx = ctx;
     this.ctx.imageSmoothingEnabled = false; // Pixel-perfect rendering
+    this.loadImages();
+  }
+
+  private async loadImages() {
+    const imageUrls = {
+      'voltman-normal': '/images/voltman-normal.png',
+      'voltman-powerup': '/images/voltman-powerup.png',
+      'mutant-rabbits': '/images/mutant-rabbits.png',
+      'power-ups': '/images/power-ups.png',
+      'bonus-items': '/images/bonus-items.png',
+      'hazards': '/images/hazards.png'
+    };
+
+    const loadPromises = Object.entries(imageUrls).map(([key, url]) => {
+      return new Promise<void>((resolve, reject) => {
+        const img = new Image();
+        img.onload = () => {
+          this.images[key] = img;
+          resolve();
+        };
+        img.onerror = () => {
+          console.warn(`Failed to load image: ${url}`);
+          resolve(); // Continue even if image fails to load
+        };
+        img.src = url;
+      });
+    });
+
+    await Promise.all(loadPromises);
+    this.imagesLoaded = true;
+    console.log('Game images loaded');
   }
 
   public resize(width: number, height: number): void {
@@ -38,7 +71,10 @@ export class GameRenderer {
   public render(gameState: VoltManGameState): void {
     if (!gameState.maze || !gameState.player) return;
 
-    // Clear canvas
+    // Only render if we're not already rendering to prevent flickering
+    this.ctx.save();
+    
+    // Clear canvas with dark background
     this.ctx.fillStyle = '#000011';
     this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
 
@@ -48,14 +84,16 @@ export class GameRenderer {
     // Render treats
     this.renderTreats(gameState.treats);
     
-    // Render player
+    // Render player with pixel art
     this.renderPlayer(gameState.player, gameState.powerUpTimeLeft > 0);
     
-    // Render enemies
+    // Render enemies with pixel art
     this.renderEnemies(gameState.enemies);
     
     // Render particle effects
     this.renderParticleEffects(gameState.particleEffects);
+    
+    this.ctx.restore();
   }
 
   private renderMaze(maze: any): void {
@@ -106,97 +144,89 @@ export class GameRenderer {
   }
 
   private renderPlayer(player: any, isPoweredUp: boolean): void {
-    const pixelX = this.offsetX + player.x * this.tileSize + this.tileSize / 2;
-    const pixelY = this.offsetY + player.y * this.tileSize + this.tileSize / 2;
-    const radius = this.tileSize * 0.4;
+    const pixelX = this.offsetX + player.x * this.tileSize;
+    const pixelY = this.offsetY + player.y * this.tileSize;
+    const size = this.tileSize;
 
-    if (isPoweredUp) {
-      // Power-up mode - electric aura
-      this.ctx.shadowColor = '#00ffff';
-      this.ctx.shadowBlur = 20;
-      this.ctx.fillStyle = '#00ffff';
-      this.ctx.beginPath();
-      this.ctx.arc(pixelX, pixelY, radius * 1.3, 0, Math.PI * 2);
-      this.ctx.fill();
+    // Use pixel art images if loaded, otherwise fall back to simple shapes
+    if (this.imagesLoaded) {
+      const imageKey = isPoweredUp ? 'voltman-powerup' : 'voltman-normal';
+      const image = this.images[imageKey];
+      
+      if (image) {
+        // Disable smoothing for pixel-perfect rendering
+        this.ctx.imageSmoothingEnabled = false;
+        
+        // Draw the pixel art image scaled to tile size
+        this.ctx.drawImage(image, pixelX, pixelY, size, size);
+        return;
+      }
     }
 
-    // Main body
-    this.ctx.fillStyle = isPoweredUp ? '#ffffff' : '#4a90e2';
-    this.ctx.shadowColor = isPoweredUp ? '#ffffff' : '#4a90e2';
-    this.ctx.shadowBlur = isPoweredUp ? 15 : 10;
-    this.ctx.beginPath();
-    this.ctx.arc(pixelX, pixelY, radius, 0, Math.PI * 2);
-    this.ctx.fill();
+    // Fallback: simple colored circle
+    const centerX = pixelX + size / 2;
+    const centerY = pixelY + size / 2;
+    const radius = size * 0.4;
 
-    // Eyes
-    this.ctx.fillStyle = '#000000';
-    this.ctx.shadowBlur = 0;
+    this.ctx.fillStyle = isPoweredUp ? '#00ffff' : '#4a90e2';
     this.ctx.beginPath();
-    this.ctx.arc(pixelX - radius * 0.3, pixelY - radius * 0.2, radius * 0.15, 0, Math.PI * 2);
+    this.ctx.arc(centerX, centerY, radius, 0, Math.PI * 2);
     this.ctx.fill();
-    this.ctx.beginPath();
-    this.ctx.arc(pixelX + radius * 0.3, pixelY - radius * 0.2, radius * 0.15, 0, Math.PI * 2);
-    this.ctx.fill();
-
-    // Lightning bolt on forehead (if powered up)
-    if (isPoweredUp) {
-      this.ctx.fillStyle = '#ffff00';
-      this.ctx.shadowColor = '#ffff00';
-      this.ctx.shadowBlur = 10;
-      this.ctx.beginPath();
-      this.ctx.moveTo(pixelX, pixelY - radius * 0.6);
-      this.ctx.lineTo(pixelX - radius * 0.2, pixelY - radius * 0.2);
-      this.ctx.lineTo(pixelX + radius * 0.1, pixelY - radius * 0.2);
-      this.ctx.lineTo(pixelX, pixelY + radius * 0.2);
-      this.ctx.lineTo(pixelX + radius * 0.2, pixelY - radius * 0.1);
-      this.ctx.lineTo(pixelX - radius * 0.1, pixelY - radius * 0.1);
-      this.ctx.closePath();
-      this.ctx.fill();
-    }
-
-    this.ctx.shadowBlur = 0;
   }
 
   private renderEnemies(enemies: any[]): void {
-    enemies.forEach(enemy => {
-      const pixelX = this.offsetX + enemy.x * this.tileSize + this.tileSize / 2;
-      const pixelY = this.offsetY + enemy.y * this.tileSize + this.tileSize / 2;
-      const radius = this.tileSize * 0.4;
+    enemies.forEach((enemy, index) => {
+      const pixelX = this.offsetX + enemy.x * this.tileSize;
+      const pixelY = this.offsetY + enemy.y * this.tileSize;
+      const size = this.tileSize;
 
-      // Enemy body color
+      // Use pixel art from the mutant rabbits image if available
+      if (this.imagesLoaded && this.images['mutant-rabbits']) {
+        this.ctx.imageSmoothingEnabled = false;
+        
+        // The mutant rabbits image has 4 rabbits in a 2x2 grid
+        // Calculate which rabbit to use based on enemy index and state
+        let rabbitIndex = index % 4; // Use different rabbit for each enemy
+        if (enemy.isFrightened) {
+          rabbitIndex = 0; // Use first rabbit (top-left) for frightened state
+        }
+        
+        const sourceSize = this.images['mutant-rabbits'].width / 2; // 2x2 grid
+        const sourceX = (rabbitIndex % 2) * sourceSize;
+        const sourceY = Math.floor(rabbitIndex / 2) * sourceSize;
+        
+        // Apply blue tint if frightened
+        if (enemy.isFrightened) {
+          this.ctx.save();
+          this.ctx.globalCompositeOperation = 'multiply';
+          this.ctx.fillStyle = '#4444ff';
+          this.ctx.fillRect(pixelX, pixelY, size, size);
+          this.ctx.globalCompositeOperation = 'source-over';
+          this.ctx.restore();
+        }
+        
+        this.ctx.drawImage(
+          this.images['mutant-rabbits'],
+          sourceX, sourceY, sourceSize, sourceSize,
+          pixelX, pixelY, size, size
+        );
+        return;
+      }
+
+      // Fallback: simple colored rectangles
+      const centerX = pixelX + size / 2;
+      const centerY = pixelY + size / 2;
+      const radius = size * 0.4;
+
       let bodyColor = enemy.color;
       if (enemy.isFrightened) {
-        bodyColor = '#0000ff'; // Blue when frightened
+        bodyColor = '#0000ff';
       }
 
       this.ctx.fillStyle = bodyColor;
-      this.ctx.shadowColor = bodyColor;
-      this.ctx.shadowBlur = 10;
-
-      // Body (rounded rectangle for rabbit shape)
       this.ctx.beginPath();
-      this.ctx.roundRect(pixelX - radius, pixelY - radius, radius * 2, radius * 1.5, radius * 0.3);
+      this.ctx.arc(centerX, centerY, radius, 0, Math.PI * 2);
       this.ctx.fill();
-
-      // Ears
-      this.ctx.beginPath();
-      this.ctx.ellipse(pixelX - radius * 0.5, pixelY - radius * 1.2, radius * 0.2, radius * 0.4, 0, 0, Math.PI * 2);
-      this.ctx.fill();
-      this.ctx.beginPath();
-      this.ctx.ellipse(pixelX + radius * 0.5, pixelY - radius * 1.2, radius * 0.2, radius * 0.4, 0, 0, Math.PI * 2);
-      this.ctx.fill();
-
-      // Eyes
-      this.ctx.fillStyle = enemy.isFrightened ? '#ffffff' : '#ff0000';
-      this.ctx.shadowBlur = 0;
-      this.ctx.beginPath();
-      this.ctx.arc(pixelX - radius * 0.3, pixelY - radius * 0.3, radius * 0.1, 0, Math.PI * 2);
-      this.ctx.fill();
-      this.ctx.beginPath();
-      this.ctx.arc(pixelX + radius * 0.3, pixelY - radius * 0.3, radius * 0.1, 0, Math.PI * 2);
-      this.ctx.fill();
-
-      this.ctx.shadowBlur = 0;
     });
   }
 
