@@ -8,7 +8,7 @@ export class Player {
   public targetY: number;
   public direction: Direction | null = null;
   public nextDirection: Direction | null = null;
-  private moveSpeed = 0.12; // Increased speed for smoother movement
+  private moveSpeed = 0.08; // Balanced speed for better control
   private startX: number;
   private startY: number;
   private isMoving: boolean = false;
@@ -33,6 +33,8 @@ export class Player {
       this.direction = direction;
       this.targetX = newX;
       this.targetY = newY;
+      this.isMoving = true;
+      this.nextDirection = null; // Clear any pending direction
     } else {
       // Store as next direction to try later
       this.nextDirection = direction;
@@ -63,7 +65,7 @@ export class Player {
       const dy = this.targetY - this.y;
       const distance = Math.sqrt(dx * dx + dy * dy);
 
-      if (distance < 0.05) {
+      if (distance < 0.08) {
         // Snap to target when very close
         this.x = this.targetX;
         this.y = this.targetY;
@@ -109,7 +111,7 @@ export class Player {
     const distanceToGrid = Math.sqrt(
       Math.pow(this.x - gridX, 2) + Math.pow(this.y - gridY, 2)
     );
-    return distanceToGrid < 0.3;
+    return distanceToGrid < 0.15; // Reduced threshold for more responsive direction changes
   }
 
   public reset(x?: number, y?: number): void {

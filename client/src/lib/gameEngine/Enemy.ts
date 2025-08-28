@@ -60,7 +60,7 @@ export class Enemy {
       const dy = this.targetY - this.y;
       const distance = Math.sqrt(dx * dx + dy * dy);
 
-      if (distance < 0.05) {
+      if (distance < 0.08) {
         // Snap to target when very close
         this.x = this.targetX;
         this.y = this.targetY;

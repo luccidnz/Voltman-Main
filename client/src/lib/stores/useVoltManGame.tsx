@@ -58,7 +58,7 @@ export const useVoltManGame = create<VoltManGameStore>()(
       console.log('Starting new game...');
       const maze = new Maze(19, 21); // Classic Pac-Man size
       const player = new Player(9, 15); // Start position
-      
+
       // Create enemies
       const enemies = [
         new Enemy(9, 9, 'red'),
@@ -105,7 +105,7 @@ export const useVoltManGame = create<VoltManGameStore>()(
 
     handleKeyPress: (key: string) => {
       const state = get();
-      
+
       console.log('Key pressed:', key);
 
       if (key === 'Space') {
@@ -149,7 +149,7 @@ export const useVoltManGame = create<VoltManGameStore>()(
 
     updateGame: (deltaTime: number) => {
       const state = get();
-      
+
       if (state.phase !== 'playing' || state.isPaused) {
         return;
       }
@@ -164,7 +164,7 @@ export const useVoltManGame = create<VoltManGameStore>()(
       if (state.powerUpTimeLeft > 0) {
         const newPowerUpTime = Math.max(0, state.powerUpTimeLeft - deltaTime);
         newState.powerUpTimeLeft = newPowerUpTime;
-        
+
         if (newPowerUpTime === 0 && state.powerUpTimeLeft > 0) {
           // Power-up ended
           state.enemies.forEach(enemy => enemy.setFrightened(false));
@@ -184,7 +184,7 @@ export const useVoltManGame = create<VoltManGameStore>()(
       // Check treat collection with proper collision detection
       const playerGridX = Math.round(state.player.x);
       const playerGridY = Math.round(state.player.y);
-      
+
       const treatIndex = state.treats.findIndex(treat => {
         const distance = Math.sqrt(
           Math.pow(playerGridX - treat.x, 2) + Math.pow(playerGridY - treat.y, 2)
@@ -196,18 +196,18 @@ export const useVoltManGame = create<VoltManGameStore>()(
         const treat = state.treats[treatIndex];
         const newTreats = [...state.treats];
         newTreats.splice(treatIndex, 1);
-        
+
         if (treat.isPowerUp) {
           // Power-up collected - properly activate power mode
           newState.score = state.score + 50;
           newState.powerUpTimeLeft = 8000; // 8 seconds
           newState.treats = newTreats;
-          
+
           // Make all enemies frightened
           state.enemies.forEach(enemy => {
             enemy.setFrightened(true);
           });
-          
+
           console.log('Power-up activated! Enemies are now frightened.');
           AudioManager.playSuccess();
         } else {
@@ -223,38 +223,39 @@ export const useVoltManGame = create<VoltManGameStore>()(
           const levelBonus = state.level * 100;
           newState.score = (newState.score || state.score) + levelBonus;
           newState.level = state.level + 1;
-          
+
           // Generate new level with increased difficulty
           const maze = new Maze(19, 21);
           const player = new Player(9, 15);
           const baseSpeed = 0.08 + (state.level * 0.005); // Gradually increase enemy speed
           const enemies = [
             new Enemy(9, 9, 'red'),
-            new Enemy(8, 9, 'pink'), 
+            new Enemy(8, 9, 'pink'),
             new Enemy(10, 9, 'cyan'),
             new Enemy(9, 10, 'orange')
           ];
-          
+
           // Increase enemy speed based on level
           enemies.forEach(enemy => {
             enemy['moveSpeed'] = baseSpeed;
           });
-          
+
           newState.maze = maze;
           newState.player = player;
           newState.enemies = enemies;
           newState.treats = maze.generateTreats();
           newState.powerUpTimeLeft = 0;
-          
+
           console.log(`Level ${state.level + 1} started! Enemy speed: ${baseSpeed}`);
         }
       }
 
-      // Check enemy collisions with improved detection
+      // Check enemy collision with improved detection
       const collidingEnemy = state.enemies.find(enemy => {
-        const dx = Math.abs(state.player!.x - enemy.x);
-        const dy = Math.abs(state.player!.y - enemy.y);
-        return dx < 0.7 && dy < 0.7; // More precise collision detection
+        const distance = Math.sqrt(
+          Math.pow(state.player.x - enemy.x, 2) + Math.pow(state.player.y - enemy.y, 2)
+        );
+        return distance < 0.7; // Use actual positions, not grid positions
       });
 
       if (collidingEnemy) {
@@ -268,16 +269,16 @@ export const useVoltManGame = create<VoltManGameStore>()(
             case 3: points = 800; break;
             case 4: points = 1600; break;
           }
-          
+
           newState.score = state.score + points;
-          
+
           // Reset enemy to home and make it not frightened
           collidingEnemy.resetToHome();
           collidingEnemy.setFrightened(false);
-          
+
           console.log(`Enemy eaten! +${points} points`);
           AudioManager.playSuccess();
-          
+
           // Add particle effect
           const newParticles = [...state.particleEffects];
           newParticles.push({
@@ -287,14 +288,14 @@ export const useVoltManGame = create<VoltManGameStore>()(
             life: 1000
           });
           newState.particleEffects = newParticles;
-          
+
         } else if (!collidingEnemy.isFrightened) {
           // Player hit by enemy
           const newLives = state.lives - 1;
           newState.lives = newLives;
-          
+
           console.log(`Player hit! Lives remaining: ${newLives}`);
-          
+
           if (newLives <= 0) {
             // Game over
             newState.phase = 'gameOver';
@@ -308,7 +309,7 @@ export const useVoltManGame = create<VoltManGameStore>()(
               enemy.setFrightened(false);
             });
             newState.powerUpTimeLeft = 0;
-            
+
             // Brief invincibility period could be added here
           }
         }
@@ -318,7 +319,7 @@ export const useVoltManGame = create<VoltManGameStore>()(
       const newParticleEffects = state.particleEffects
         .map(particle => ({ ...particle, life: particle.life - deltaTime }))
         .filter(particle => particle.life > 0);
-      
+
       if (newParticleEffects.length !== state.particleEffects.length) {
         newState.particleEffects = newParticleEffects;
       }
